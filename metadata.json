@@ -1,0 +1,9 @@
+{
+  "name": "SCPL-CRM",
+  "description": "A high-performance CRM and quotation engine featuring automated workflows, tax compliance (GST/SRB), AI-assisted content generation, and comprehensive reporting.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
