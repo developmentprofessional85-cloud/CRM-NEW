@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { GoogleGenAI, Modality } from "@google/genai";
 import { Customer, CustomerType, InterestType, VisitLog } from '../types';
-import { getCustomers, saveCustomer } from '../services/db';
+import { getCustomers, saveCustomer, getSettings } from '../services/db';
 import { generateMeetingMinutes } from '../services/geminiService';
 
 // --- Helpers ---
@@ -30,6 +30,7 @@ const formatMobileInput = (val: string) => {
 };
 
 const CustomerManagement: React.FC = () => {
+  const settings = getSettings();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMeetingClient, setActiveMeetingClient] = useState<Customer | null>(null);
@@ -139,13 +140,14 @@ const CustomerManagement: React.FC = () => {
       const contactFields = ['contactPerson', 'designation', 'email'];
       const missingContact = contactFields.filter(f => !formData[f as keyof Customer]);
       if (missingContact.length > 0) {
-        setFormError("For Business clients, Contact Person details are mandatory.");
+        setFormError("For Business clients, Contact Person, Designation and Email are mandatory.");
         return;
       }
+    }
 
-      if (!isValidEmail(formData.email!)) {
-        setFormError("Please provide a valid company email address.");
-      }
+    if (formData.email && !isValidEmail(formData.email)) {
+      setFormError("Please provide a valid email address.");
+      return;
     }
 
     try {
@@ -159,7 +161,7 @@ const CustomerManagement: React.FC = () => {
         phone: isResidential ? '' : sanitizePhone(formData.phone || ''),
         contactPerson: isResidential ? formData.name! : formData.contactPerson!,
         designation: isResidential ? 'Owner' : formData.designation!,
-        email: isResidential ? '' : formData.email!,
+        email: formData.email || '',
         alternatePhone: formData.alternatePhone!,
         customerType: formData.customerType as CustomerType,
         interestType: formData.interestType as InterestType,
@@ -171,6 +173,7 @@ const CustomerManagement: React.FC = () => {
       setIsModalOpen(false);
       setFormData(initialFormState);
     } catch (err) {
+      console.error("Save Error:", err);
       setFormError("Technical error saving record.");
     }
   };
@@ -267,10 +270,22 @@ const CustomerManagement: React.FC = () => {
 
   const sendEmail = () => {
     if (!activeMeetingClient || !generatedMinutes) return;
+    if (!activeMeetingClient.email) {
+      alert("No email address registered for this client. Please update the customer record first.");
+      return;
+    }
+
     const subject = encodeURIComponent(`Meeting Minutes - SCPL / ${activeMeetingClient.name}`);
-    const bodyText = `Dear ${activeMeetingClient.contactPerson || activeMeetingClient.name},\n\nPlease find the meeting minutes below:\n\n${generatedMinutes}\n\nBest regards,\nStructura Chemicals Team`;
-    const body = encodeURIComponent(bodyText);
-    window.location.href = `mailto:${activeMeetingClient.email}?subject=${subject}&body=${body}`;
+    const bodyText = `Dear ${activeMeetingClient.contactPerson || activeMeetingClient.name},\n\nPlease find the meeting minutes below:\n\n${generatedMinutes}\n\nBest regards,\nStructura Chemicals Team\nOfficial: ${settings.operatorEmail}`;
+    
+    // Safety check for mailto length limit (approx 2000 characters)
+    let body = encodeURIComponent(bodyText);
+    if (body.length > 1800) {
+      const truncatedText = bodyText.substring(0, 1000) + "... [Content Truncated due to length. Please refer to SCPL Archive for full details]";
+      body = encodeURIComponent(truncatedText);
+    }
+
+    window.open(`mailto:${activeMeetingClient.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   const filteredCustomers = customers.filter(c => 
@@ -422,27 +437,29 @@ const CustomerManagement: React.FC = () => {
                    </div>
                 </div>
 
-                {!isResidentialMode && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest border-b-2 border-slate-100 pb-2 flex items-center">
-                       <Contact2 size={16} className="mr-2 text-brand-500" /> Company Contact Person
-                     </h3>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name *</label>
-                            <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="Official Representative" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Designation *</label>
-                            <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="e.g. Project Manager" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Email *</label>
-                            <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="person@company.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                          </div>
-                     </div>
-                  </div>
-                )}
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest border-b-2 border-slate-100 pb-2 flex items-center">
+                     <Contact2 size={16} className="mr-2 text-brand-500" /> Correspondence & Contact
+                   </h3>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {!isResidentialMode && (
+                          <>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name *</label>
+                              <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="Official Representative" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Designation *</label>
+                              <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="e.g. Project Manager" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
+                            </div>
+                          </>
+                        )}
+                        <div className={`space-y-1 ${isResidentialMode ? 'md:col-span-3' : ''}`}>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address {isResidentialMode ? '(Optional)' : '*'}</label>
+                          <input className="w-full p-4 bg-slate-50 rounded-xl font-bold border-2 border-transparent focus:border-brand-500 outline-none text-sm" placeholder="person@company.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                        </div>
+                   </div>
+                </div>
 
                 <div className="bg-emerald-50 p-8 rounded-[2rem] border border-emerald-100 flex items-center justify-between">
                    <div className="flex-1">

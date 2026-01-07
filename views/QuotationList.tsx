@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { getQuotations, getCustomers, getSettings, createInvoiceFromQuotation } from '../services/db';
 import { Quotation, Customer, WorkflowStatus } from '../types';
-import { FileText, Eye, Send, CheckCircle, FileX, ArrowRight, Loader2 } from 'lucide-react';
+import { FileText, Eye, Send, CheckCircle, FileX, ArrowRight, Loader2, Mail } from 'lucide-react';
 import DocumentPreview from '../components/DocumentPreview';
 
 const QuotationList: React.FC = () => {
+  const settings = getSettings();
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<Quotation | null>(null);
@@ -35,6 +36,15 @@ const QuotationList: React.FC = () => {
         alert("Invoice generated and archived in Invoicing Center.");
       }, 800);
     }
+  };
+
+  const dispatchEmail = (quote: Quotation) => {
+    const customer = customers.find(c => c.id === quote.customerId);
+    if (!customer) return alert("Customer record not found.");
+    
+    const subject = encodeURIComponent(`Commercial Proposal: ${quote.serialNumber} - SCPL / ${quote.subject}`);
+    const body = encodeURIComponent(`Dear ${customer.contactPerson || customer.name},\n\nGreetings from Structura Chemicals.\n\nPlease find attached the commercial proposal for the subject project.\n\nSummary:\n- Ref: ${quote.serialNumber}\n- Subject: ${quote.subject}\n- Amount: Rs ${quote.grandTotal.toLocaleString()}\n\nWe look forward to your valuable feedback.\n\nBest regards,\nSales Department - Structura Chemicals\nOfficial: ${settings.operatorEmail}`);
+    window.location.href = `mailto:${customer.email}?subject=${subject}&body=${body}`;
   };
 
   const getStatusColor = (status: WorkflowStatus) => {
@@ -78,7 +88,7 @@ const QuotationList: React.FC = () => {
                   <p className="text-sm text-slate-700 truncate max-w-xs">{quote.subject}</p>
                 </td>
                 <td className="px-6 py-4">
-                  <p className="font-bold text-slate-900">Rs {quote.grandTotal.toLocaleString()}</p>
+                  <p className="font-bold text-slate-900">Rs {(quote.grandTotal ?? 0).toLocaleString()}</p>
                   <p className="text-[10px] text-slate-400">{quote.taxType} Included</p>
                 </td>
                 <td className="px-6 py-4">
@@ -93,8 +103,10 @@ const QuotationList: React.FC = () => {
                       className="p-2 text-slate-400 hover:text-brand-600 transition-colors" title="View Document">
                       <Eye size={18} />
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Send Email">
-                      <Send size={18} />
+                    <button 
+                      onClick={() => dispatchEmail(quote)}
+                      className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Send Email">
+                      <Mail size={18} />
                     </button>
                     {quote.status === WorkflowStatus.JOB_COMPLETED && (
                       <button 
@@ -124,7 +136,7 @@ const QuotationList: React.FC = () => {
         <DocumentPreview 
           type="Quotation"
           doc={selectedQuote}
-          customer={customers.find(c => c.id === selectedQuote.customerId)!}
+          customer={customers.find(c => c.id === selectedQuote.customerId)}
           settings={getSettings()}
           onClose={() => setSelectedQuote(null)}
         />

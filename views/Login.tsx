@@ -1,36 +1,49 @@
 
-import React, { useState } from 'react';
-import { Hexagon, Lock, User as UserIcon, ChevronRight, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Hexagon, Lock, User as UserIcon, ChevronRight, ShieldCheck, Loader2, AlertCircle, Mail, Eye, EyeOff } from 'lucide-react';
 import { User, UserRole } from '../types';
-import { setCurrentUser, getUsers } from '../services/db';
+import { setCurrentUser, getUsers, getSettings, saveSettings } from '../services/db';
 
 interface LoginProps {
   onLoginSuccess: (user: User) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [empId, setEmpId] = useState('');
+  const [empNumber, setEmpNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [operatorEmail, setOperatorEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const settings = getSettings();
+    setOperatorEmail(settings.operatorEmail || '');
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
+    // Reconstruct full Employee ID: SCPL-EMP- + User Number
+    const normalizedId = `SCPL-EMP-${empNumber.trim()}`;
+
     // Dynamic Authentication Logic using local database
     setTimeout(() => {
-      const normalizedId = empId.trim().toUpperCase();
       const users = getUsers();
       
       const userMatch = users.find(u => u.id === normalizedId && u.password === password);
 
       if (userMatch) {
+        // Update the official correspondence email in settings on successful login
+        const settings = getSettings();
+        saveSettings({ ...settings, operatorEmail });
+        
         setCurrentUser(userMatch);
         onLoginSuccess(userMatch);
       } else {
-        setError("Access Denied. Ensure Employee ID and Password are correct.");
+        setError(`Access Denied. Check ID (${normalizedId}) and Password.`);
         setIsLoading(false);
       }
     }, 1200);
@@ -63,32 +76,61 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className="space-y-4">
               <div className="group">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Employee ID</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors" size={18} />
+                <div className="relative flex items-center">
+                  <div className="absolute left-5 text-slate-400 font-black text-xs pointer-events-none tracking-tight">
+                    SCPL-EMP-
+                  </div>
                   <input 
                     type="text" 
                     required
-                    placeholder="SCPL-EMP-001"
-                    className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-[1.5rem] outline-none font-bold text-slate-900 transition-all shadow-inner uppercase"
-                    value={empId}
-                    onChange={(e) => setEmpId(e.target.value)}
+                    placeholder="001"
+                    className="w-full pl-[5.5rem] pr-6 py-5 bg-slate-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-[1.5rem] outline-none font-black text-slate-900 transition-all shadow-inner uppercase"
+                    value={empNumber}
+                    onChange={(e) => setEmpNumber(e.target.value)}
                   />
+                  <div className="absolute right-5">
+                    <UserIcon size={18} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" />
+                  </div>
                 </div>
               </div>
 
               <div className="group">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Secure Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors" size={18} />
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-5 text-slate-300 group-focus-within:text-brand-500 transition-colors" size={18} />
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-[1.5rem] outline-none font-bold text-slate-900 transition-all shadow-inner"
+                    className="w-full pl-14 pr-14 py-5 bg-slate-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-[1.5rem] outline-none font-bold text-slate-900 transition-all shadow-inner"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-5 p-2 text-slate-400 hover:text-brand-500 transition-colors focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
+              </div>
+
+              <div className="group">
+                <label className="text-[10px] font-black text-brand-600 uppercase tracking-widest ml-1 mb-2 block">Official Correspondence Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors" size={18} />
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="office@scpl.com.pk"
+                    className="w-full pl-14 pr-6 py-5 bg-brand-50 border-2 border-brand-100 focus:border-brand-500 focus:bg-white rounded-[1.5rem] outline-none font-bold text-slate-900 transition-all shadow-inner"
+                    value={operatorEmail}
+                    onChange={(e) => setOperatorEmail(e.target.value)}
+                  />
+                </div>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2 ml-1 italic">Used as source for automated Quotation & Invoice dispatch</p>
               </div>
             </div>
 

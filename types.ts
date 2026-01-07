@@ -153,6 +153,7 @@ export interface Signature {
 export interface AppSettings {
   companyName: string;
   companyShortName: string;
+  operatorEmail: string;
   scplNtn: string;
   logoUrl: string;
   gstRate: number;

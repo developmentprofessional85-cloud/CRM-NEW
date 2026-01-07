@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Building, Fingerprint, Tags, Plus, Trash2, Users as UsersIcon, Key, AlertTriangle, UserCheck, X } from 'lucide-react';
+import { Save, Building, Fingerprint, Tags, Plus, Trash2, Users as UsersIcon, Key, AlertTriangle, UserCheck, X, Mail } from 'lucide-react';
 import { AppSettings, User, UserRole } from '../types';
 import { getSettings, saveSettings, getUsers, saveUser, deleteUser } from '../services/db';
 
@@ -123,6 +123,19 @@ const AdminSettings: React.FC = () => {
                   value={settings.companyName}
                   onChange={(e) => setSettings({...settings, companyName: e.target.value})}
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Operator Email (Official)</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input 
+                    type="email" 
+                    placeholder="office@scpl.com"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl outline-none font-bold text-sm"
+                    value={settings.operatorEmail}
+                    onChange={(e) => setSettings({...settings, operatorEmail: e.target.value})}
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">National Tax (NTN)</label>

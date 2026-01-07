@@ -46,11 +46,14 @@ export async function suggestClientResponsibilities(serviceType: string) {
 export async function generateMeetingMinutes(notes: string, clientName: string, repName: string, base64Image?: string) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
     
     const textPart = {
       text: `
         Act as a professional Executive Assistant and Site Engineer. 
         Convert the provided data into a structured "Minutes of Meeting" (MoM).
+        
+        CRITICAL: The meeting date is TODAY: ${today}. Ensure the MoM starts with this date.
         
         Client Name: ${clientName}
         Company Representative: ${repName}
@@ -60,12 +63,13 @@ export async function generateMeetingMinutes(notes: string, clientName: string, 
         Perform OCR on the handwriting and include those observations in the final MoM.
 
         Format:
-        1. Executive Summary
-        2. Site Observations & Dimensions (Extracted from sketch/handwriting)
-        3. Key Discussion Points
-        4. Decisions Made
-        5. Action Items
-        6. Next Steps
+        1. Date of Meeting: ${today}
+        2. Executive Summary
+        3. Site Observations & Dimensions (Extracted from sketch/handwriting)
+        4. Key Discussion Points
+        5. Decisions Made
+        6. Action Items
+        7. Next Steps
       `
     };
 

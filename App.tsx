@@ -66,7 +66,12 @@ const App: React.FC = () => {
           <QuotationList />
         </div>
       );
-      case 'new-quotation': return <QuotationEngine userRole={currentUser.role} />;
+      case 'new-quotation': return (
+        <QuotationEngine 
+          userRole={currentUser.role} 
+          onBack={() => setActiveView('dashboard')} 
+        />
+      );
       case 'invoices': return <InvoiceManagement />;
       case 'reports': return <Reports />;
       case 'admin': 

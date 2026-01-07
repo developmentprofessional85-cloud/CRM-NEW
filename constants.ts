@@ -4,6 +4,7 @@ import { AppSettings, UserRole } from './types';
 export const DEFAULT_SETTINGS: AppSettings = {
   companyName: 'Structura Chemicals Private Limited',
   companyShortName: 'SCPL',
+  operatorEmail: 'office@scpl.com.pk',
   scplNtn: '1234567-8',
   logoUrl: '',
   gstRate: 0.18,

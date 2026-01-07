@@ -7,6 +7,7 @@ import DocumentPreview from '../components/DocumentPreview';
 
 const InvoiceManagement: React.FC = () => {
   const currentUser = getCurrentUser();
+  const settings = getSettings();
   const isAdmin = currentUser?.role === UserRole.ADMIN;
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -19,6 +20,17 @@ const InvoiceManagement: React.FC = () => {
   }, []);
 
   const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || 'Unknown';
+
+  const dispatchEmail = (inv: Invoice) => {
+    const customer = customers.find(c => c.id === inv.customerId);
+    if (!customer) return alert("Customer record not found.");
+    if (!customer.email) return alert("No email address found for this client.");
+    
+    const subject = encodeURIComponent(`Commercial Invoice: ${inv.serialNumber} - SCPL Settlement`);
+    const bodyText = `Dear ${customer.contactPerson || customer.name},\n\nGreetings from Structura Chemicals.\n\nPlease find attached the commercial invoice for the subject settlement.\n\nSummary:\n- Ref: ${inv.serialNumber}\n- Amount: Rs ${inv.grandTotal.toLocaleString()}\n- Due Date: ${new Date(inv.dueDate).toLocaleDateString()}\n\nWe look forward to your valuable response.\n\nBest regards,\nAccounts Department - Structura Chemicals\nOfficial Correspondence: ${settings.operatorEmail}`;
+    const body = encodeURIComponent(bodyText);
+    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, '_blank');
+  };
 
   return (
     <div className="space-y-6">
@@ -81,6 +93,11 @@ const InvoiceManagement: React.FC = () => {
                         onClick={() => setSelectedInvoice(inv)}
                         className="p-3 text-slate-300 hover:text-brand-600 bg-white border border-slate-100 rounded-xl hover:shadow-lg transition-all">
                         <Eye size={18} />
+                      </button>
+                      <button 
+                        onClick={() => dispatchEmail(inv)}
+                        className="p-3 text-slate-300 hover:text-blue-600 bg-white border border-slate-100 rounded-xl hover:shadow-lg transition-all">
+                        <Mail size={18} />
                       </button>
                       {isAdmin && (
                         <button className="p-3 text-slate-300 hover:text-emerald-600 bg-white border border-slate-100 rounded-xl hover:shadow-lg transition-all" title="Mark as Paid">

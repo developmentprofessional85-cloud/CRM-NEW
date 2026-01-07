@@ -7,8 +7,15 @@ import { suggestScopeOfWork, suggestClientResponsibilities, suggestTermsAndCondi
 import { UOM_OPTIONS } from '../constants';
 import DocumentPreview from '../components/DocumentPreview';
 
-const QuotationEngine: React.FC<{ initialData?: Quotation, userRole?: UserRole }> = ({ initialData, userRole = UserRole.SALES }) => {
+interface QuotationEngineProps {
+  initialData?: Quotation;
+  userRole?: UserRole;
+  onBack?: () => void;
+}
+
+const QuotationEngine: React.FC<QuotationEngineProps> = ({ initialData, userRole = UserRole.SALES, onBack }) => {
   const currentUser = getCurrentUser();
+  const settings = getSettings();
   const [step, setStep] = useState(1);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -97,7 +104,6 @@ const QuotationEngine: React.FC<{ initialData?: Quotation, userRole?: UserRole }
   };
 
   const calculateTotals = () => {
-    const settings = getSettings();
     const subtotal = (formData.lineItems || []).reduce((acc, item) => acc + item.subtotal, 0);
     
     let taxRate = 0;
@@ -193,9 +199,11 @@ const QuotationEngine: React.FC<{ initialData?: Quotation, userRole?: UserRole }
     if (!finalizedQuote) return;
     const customer = customers.find(c => c.id === finalizedQuote.customerId);
     if (!customer) return;
+    if (!customer.email) return alert("No email address found for this client.");
+
     const subject = encodeURIComponent(`Commercial Proposal: ${finalizedQuote.serialNumber} - SCPL / ${finalizedQuote.subject}`);
-    const body = encodeURIComponent(`Dear ${customer.contactPerson || customer.name},\n\nGreetings from Structura Chemicals.\n\nPlease find attached the commercial proposal for the subject project.\n\nSummary:\n- Ref: ${finalizedQuote.serialNumber}\n- Subject: ${finalizedQuote.subject}\n- Amount: Rs ${finalizedQuote.grandTotal.toLocaleString()}\n\nWe look forward to your valuable feedback.\n\nBest regards,\nSales Department - Structura Chemicals`);
-    window.location.href = `mailto:${customer.email}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent(`Dear ${customer.contactPerson || customer.name},\n\nGreetings from Structura Chemicals.\n\nPlease find attached the commercial proposal for the subject project.\n\nSummary:\n- Ref: ${finalizedQuote.serialNumber}\n- Subject: ${finalizedQuote.subject}\n- Amount: Rs ${finalizedQuote.grandTotal.toLocaleString()}\n\nWe look forward to your valuable feedback.\n\nBest regards,\nSales Department - Structura Chemicals\nOfficial Correspondence: ${settings.operatorEmail}`);
+    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   if (finalizedQuote) {
@@ -236,7 +244,10 @@ const QuotationEngine: React.FC<{ initialData?: Quotation, userRole?: UserRole }
              </div>
 
              <div className="pt-8 border-t border-slate-100 flex flex-col space-y-4">
-                <button onClick={() => window.location.reload()} className="flex items-center justify-center space-x-2 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-brand-600">
+                <button 
+                  onClick={onBack} 
+                  className="flex items-center justify-center space-x-2 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-brand-600 transition-colors"
+                >
                   <span>Return to Management Dashboard</span>
                   <ChevronRight size={14} />
                 </button>
@@ -248,8 +259,8 @@ const QuotationEngine: React.FC<{ initialData?: Quotation, userRole?: UserRole }
           <DocumentPreview 
             type={finalizedQuote.type as any}
             doc={finalizedQuote}
-            customer={customers.find(c => c.id === finalizedQuote.customerId)!}
-            settings={getSettings()}
+            customer={customers.find(c => c.id === finalizedQuote.customerId)}
+            settings={settings}
             onClose={() => setIsPreviewOpen(false)}
           />
         )}
